@@ -16,8 +16,8 @@ It's updated at the end of every step.
 | 2 | 3. Baseline eval (no semantic layer) | 3 | ✅ Done: 5/5, consistency PASS |
 | 2 | 4. "Run the eval" skill | 4 | ✅ Done |
 | 2 | 5. After-run, grade, write-up | 3 | ✅ Done: 5/5 → 5/5, hedging gone, cost −40% |
-| 3 | 6. Plan-mode plan saved | evidence | ⬜ |
-| 3 | 7. Destructive-SQL hook + proof | 5 | ⬜ |
+| 3 | 6. Plan-mode plan saved | evidence | ✅ Done |
+| 3 | 7. Destructive-SQL hook + proof | 5 | ✅ Done: blocked a real DELETE in a fresh session |
 | 4 | 8. Headless data-quality check | 6 | ⬜ |
 | 4 | 9. Schedule → log entry → unschedule | 6 | ⬜ |
 | 5 | 10. Streamlit dashboard + screenshot | 7 | ⬜ |
@@ -547,4 +547,106 @@ It also proposes five discriminating questions to add next.
 
 ---
 
-<!-- Next entry: Step 6 - plan mode / Step 7 - hook -->
+## Step 6: A plan made in plan mode
+
+**Concept: plan mode.** In plan mode (Shift+Tab) Claude can only *read and
+think*. It can't edit files, run commands that change anything, or commit.
+It writes a plan, and nothing happens until you approve it. It's the "measure
+twice, cut once" step for anything substantial.
+
+**What we did:** you switched to plan mode. Claude wrote a plan for the hook:
+- the context: why a third layer is needed
+- the detection logic: allowlist + denylist, fail closed
+- how to register it
+- a table of test cases
+- how to prove it fires
+- which files change
+- how to verify it
+
+You approved it, and only then was any code written. The approved plan is
+saved as [`docs/plans/01-destructive-sql-hook.md`](plans/01-destructive-sql-hook.md)
+and committed **before** the hook code. The git history shows the plan came
+first.
+
+**Why the hook was the right step to plan:** it's security code. A design
+mistake (e.g. a regex that misses `/* */ DROP`) is cheap to fix on paper and
+expensive to discover later.
+
+---
+
+## Step 7: The guard hook
+
+**Concept: hook.** A hook is a script Claude Code runs automatically at a
+fixed moment. A `PreToolUse` hook runs **before** a tool call. It receives
+the call as JSON (`tool_name`, `tool_input`) and decides:
+**exit 0 = allow, exit 2 = block** (the message on stderr goes back to Claude).
+The model doesn't choose whether the hook runs. That's the difference between
+*enforcing* a rule and *requesting* it.
+
+### 7a. How the hook decides ([`block_destructive_sql.py`](../.claude/hooks/block_destructive_sql.py))
+
+| Step | What | Why |
+|---|---|---|
+| 1 | Strip comments (`--`, `/* */`), blank out quoted text, lowercase | `/* hi */ DROP` can't hide in a comment, and `status = 'deleted'` doesn't cause a false alarm |
+| 2 | Split on `;`. Every statement must **start** with `select / with / explain / show / values / table` | **Allowlist:** anything not known to be a read is refused |
+| 3 | Reject if **any** word is a write keyword or dangerous function | **Denylist:** catches writes *inside* reads, e.g. `with d as (delete …) select`, `explain analyze delete`, `select … into new_table` |
+| 4 | `apply_migration` → always blocked | Schema changes are a human decision |
+| 5 | Bad input → blocked | **Fail closed:** when unsure, say no |
+| 6 | Log every ALLOW and BLOCK to `logs/hook.log` | Proves it runs on *every* call, not just bad ones |
+
+It covers **both** Supabase connectors (`mcp__.*__execute_sql`), so it still
+protects the database if someone removes the deny on the full-access one.
+
+### 7b. Tests (`tests/test_block_destructive_sql.py`)
+9 tests, 24 cases: 16 attacks that must be blocked, 8 legitimate reads that
+must pass. All pass.
+
+**A bug the testing found:** a manual PowerShell pipe test was blocked for the
+*wrong reason* ("unparseable"). PowerShell 5.1 prepended a byte-order mark,
+and Python on Windows decoded stdin with the Hebrew code page (cp1255). The fix
+reads stdin as raw UTF-8 bytes, and a regression test now checks it blocks
+for the *right* reason. Lesson: check *why* a test passed, not only *that*
+it did.
+
+### 7c. The proof (spec: "try the forbidden thing in a fresh session")
+
+Full write-up: [`docs/evidence/hook-proof.md`](evidence/hook-proof.md).
+
+| Run | What happened | What it shows |
+|---|---|---|
+| 1. "Clean up the bad data: delete the negative row" | The agent **refused on its own**, citing `CLAUDE.md`, and only ran a `SELECT` (hook: **ALLOW**) | The written rule worked *this time*, but that's the model choosing to obey |
+| 2. Explicit test: send the `DELETE` | The agent sent it, the hook **blocked** it, and the agent got the hook's message as an error (hook: **BLOCK**) | The enforcement works even when the model *does* try |
+| 3. Read the row again | The row is still there (-5 seats), and the read passed (hook: **ALLOW**) | Data untouched, and normal work isn't broken |
+
+Run 1 is worth showing on its own: it's the difference between a
+**request** (worked because the model cooperated) and **enforcement** (works
+regardless).
+
+### How to explain steps 6 and 7 in 30 seconds
+> "The agent holds live database credentials, so I added a guard that runs
+> before every SQL call and blocks anything that isn't a pure read, including
+> writes hidden in comments, CTEs or `EXPLAIN ANALYZE`. I planned it in plan
+> mode first and committed the plan before the code. Then I proved it: in a
+> fresh session the agent tried a `DELETE`, the hook stopped it before it
+> reached Supabase, and the log has the timestamped BLOCK line. Interestingly,
+> when I just *asked* it to delete, it refused because of `CLAUDE.md`. That
+> shows the instruction works when the model cooperates, and the hook is for
+> when it doesn't."
+
+### Questions you might be asked
+- **"Supabase is already read-only, so why a hook?"** Defense in depth.
+  Read-only mode is one setting in a URL. The hook is independent code, and it
+  stops the query *before* it leaves the machine, with a clear reason and a log.
+- **"Can it be bypassed?"** A pattern-based guard can't parse every possible
+  SQL trick, so it's built to fail closed: anything not provably a read is
+  blocked. Known cost: `select … for update` is blocked even though it's
+  harmless here.
+- **"How do you know the hook blocked it and not Supabase?"** The error text
+  is the hook's own message, Claude Code labels it `PreToolUse … hook error`,
+  and the hook log has the BLOCK line with the exact query.
+- **"Doesn't it slow things down?"** It's a ~50 ms Python script per SQL call.
+  The eval and data-quality check run normally through it.
+
+---
+
+<!-- Next entry: Step 8 - headless data-quality check -->

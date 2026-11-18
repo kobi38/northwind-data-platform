@@ -1,0 +1,3 @@
+2026-11-18T15:52:28+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | SELECT * FROM usage_daily WHERE active_seats < 0;
+2026-11-18T15:53:01+02:00 | BLOCK | mcp__supabase__execute_sql | statement starts with 'delete', not a read (select/with/explain/show/values/table) | DELETE FROM usage_daily WHERE active_seats < 0;
+2026-11-18T15:53:22+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select usage_id, account_code, usage_date, active_seats from usage_daily where active_seats < 0

@@ -15,8 +15,19 @@ This agent can reach a live production database. Every rule in
 | Deny `mcp__supabase__apply_migration` | Schema changes are a human decision. This is defense in depth in case read-only mode is ever switched off. |
 | Allow `execute_sql`, `list_tables` | Answering questions is the job. Prompting for every `SELECT` would teach the user to click "yes" without reading, which is worse than no prompt. |
 
-The `PreToolUse` hook (component 5) is the third layer: it inspects the SQL
-text itself and blocks destructive statements before they leave the machine.
+The **third layer** is the `PreToolUse` hook
+[`.claude/hooks/block_destructive_sql.py`](../.claude/hooks/block_destructive_sql.py).
+It inspects the SQL text of every `execute_sql` call, on either Supabase
+connector, and blocks anything that isn't a pure read before it leaves the
+machine. It also always blocks `apply_migration` and logs every decision to
+`logs/hook.log`. Unlike layers 1 and 2, it doesn't depend on configuration
+staying correct: if read-only mode were switched off tomorrow, the hook would
+still stop a `DELETE`. Proof it fires: [evidence/hook-proof.md](evidence/hook-proof.md).
+
+**Why a hook and not just an instruction?** `CLAUDE.md` *asks* the agent not
+to touch the dirty rows, and in testing the agent obeyed. But an instruction
+can be misread, overridden by a confusing prompt, or ignored by a weaker
+model. A hook is code that runs every time, whatever the model decides.
 
 ## The answer key stays sealed
 
