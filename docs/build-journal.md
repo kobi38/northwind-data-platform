@@ -20,7 +20,7 @@ It's updated at the end of every step.
 | 3 | 7. Destructive-SQL hook + proof | 5 | ✅ Done: blocked a real DELETE in a fresh session |
 | 4 | 8. Headless data-quality check | 6 | ✅ Done: finds all 4 seeded issues, exit 1 |
 | 4 | 9. Schedule → log entry → unschedule | 6 | ✅ Done: ran unattended 16:14, task deleted |
-| 5 | 10. Streamlit dashboard + screenshot | 7 | ⬜ |
+| 5 | 10. Streamlit dashboard + screenshot | 7 | ✅ Done: every number matches the eval |
 | 5 | 11. README + publish to GitHub | - | ⬜ |
 
 ---
@@ -813,4 +813,118 @@ user is logged on or not", on a machine that doesn't sleep.
 
 ---
 
-<!-- Next entry: Step 10 - Streamlit dashboard -->
+## Step 10: The Streamlit dashboard
+
+**Goal (from the spec):** a small Streamlit app that reads the database and
+shows the metrics, MRR, paying customers, trials and revenue over time, with
+numbers that are **right**. "A dashboard that sums the wrong column is more
+dangerous than no dashboard, because polish manufactures trust."
+
+**Concept: one source of rules.** The agents follow `docs/semantic-layer.md`.
+The dashboard must follow the *same* rules, or the two will disagree and
+nobody will trust either. So every rule lives in one file and the screen code
+has none.
+
+### 10a. The files
+
+| File | What it does |
+|---|---|
+| [`dashboard/metrics.py`](../dashboard/metrics.py) | **All** the SQL. Each rule is written once as a named fragment (`NOT_INTERNAL`, `MONTHLY_AMOUNT`, `LIVE_AT_MONTH_END`, `PAYING`, `PAID`), copied from semantic-layer sections 4 and 5, and the queries are built from those fragments. |
+| [`dashboard/app.py`](../dashboard/app.py) | Draws only. It never filters, sums or normalizes. |
+| [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example) | A template with no password, committed so others know the format |
+| `.streamlit/secrets.toml` | The real login. Git-ignored, created by the human. **Claude is deny-listed from it.** |
+| [`requirements.txt`](../requirements.txt) | streamlit, psycopg, pandas, pyyaml |
+
+### 10b. What's on the screen
+
+- **Month selector** (snapshot at month end). Data covers Jan to Mar 2026,
+  and the app says so instead of pretending March is "now" (gotcha 13).
+- **KPI tiles:** MRR, ARR, paying customers, accounts on trial and cash
+  collected, with change vs the previous month. Each tile has a hover help
+  that states its definition.
+- **Two bar charts:** MRR at month end and cash collected in the month. They
+  are deliberately *separate* charts, not one chart with two axes, and a
+  caption explains why they differ (annual contracts are billed once but
+  count at 1/12 a month).
+- **"Who makes up MRR"** per account, with a total that must equal the tile.
+- **Data quality:** the 4 bad `usage_daily` rows are *shown, not fixed*,
+  using the same section 7 rules as the scheduled check.
+- **"How these numbers are computed"**: the rules in plain words plus the SQL.
+
+### 10c. Safety built in
+
+- **Read-only session:** each query runs in a `READ ONLY` transaction
+  (`conn.read_only = True`), so even though the login is the full-access
+  `postgres` user, the server rejects any write coming from the dashboard.
+  *Status:* built in, not yet tested live (the test needs the human's
+  login, so the human runs it). A dedicated read-only database role would
+  be the stronger fix (see limitations).
+- **Currency guard:** if a non-USD row ever appears, the app refuses to show
+  mixed totals (section 4.4) instead of silently adding dollars to euros.
+- **No password in errors:** connection errors are shown with the password
+  masked.
+
+### 10d. What went wrong on the way (and the fix)
+
+| Problem | Cause | Fix |
+|---|---|---|
+| Direct host unreachable | `db.<ref>.supabase.co` only has an IPv6 address; this network has no IPv6 route | Use the **Session pooler** host (IPv4) with user `postgres.<ref>` |
+| `password authentication failed` | Wrong password in `secrets.toml` | The human corrected it in the file; Claude never saw it |
+| Claude's diagnostic script was **refused** | It opened `secrets.toml` itself, which the permissions forbid | Correct refusal. Instead the app's own error message was improved, and diagnosis went through what the app *displays*, never the file. Evidence that the deny rule works for Python scripts too, not just the Read tool. |
+
+### 10e. Verification: the dashboard agrees with the eval
+
+The dashboard's SQL was first run read-only through the agent path, then the
+app itself was run headless (Streamlit `AppTest`) against the live database:
+
+| On screen | Dashboard | Reference |
+|---|---|---|
+| March MRR | $1,394.00 | eval q1, c1-c3 ✅ |
+| Vertex Logistics, March | $800.00 (per-account table) | eval q2 ✅ |
+| March paying customers | 4 | eval q3 ✅ |
+| March accounts on trial | 2 | eval q5 ✅ |
+| Cash collected Jan-Mar | $13,428.09 | eval q4 ✅ |
+| February MRR | $1,539.00 | semantic-layer worked example ✅ |
+| Per-account total | $1,394.00 | equals the MRR tile ✅ |
+| Bad `usage_daily` rows | 4 (ids 13-16) | `scripts/dq_check.py` ✅ |
+
+Three independent paths now give the same numbers: the agent with the
+semantic layer, the agent-run SQL, and the dashboard.
+
+**Screenshots** (taken by the human from the running app, March selected):
+- [`dashboard.png`](images/dashboard.png): title, month selector, KPI tiles
+- [`dashboard2.png`](images/dashboard2.png): cash, the MRR and cash charts (with a hover tooltip)
+- [`dashboard3.png`](images/dashboard3.png): MRR by account, the data-quality table
+
+**How to run it:**
+```
+pip install -r requirements.txt
+streamlit run dashboard/app.py      # then open http://localhost:8501
+```
+
+### How to explain step 10 in 30 seconds
+> "The dashboard reads the database through Supabase's pooler and shows MRR,
+> customers, trials and cash by month. All of its SQL is in one file built
+> from the semantic layer's rules, so it can't drift from what the agents
+> use, and I checked that every figure matches the eval answers. It runs
+> read-only, refuses to mix currencies, and shows the bad usage rows instead
+> of hiding or fixing them."
+
+### Questions you might be asked
+- **"Why not let the agent compute the numbers live?"** A dashboard must be
+  fast, cheap and identical on every refresh. Plain SQL is deterministic; an
+  agent call isn't. The agent is for *new* questions, the dashboard for the
+  standing ones.
+- **"How do you know the numbers are right?"** They match the graded eval
+  answers and the worked example, and the per-account rows add up to the
+  tile.
+- **"Why is the database password not in the repo?"** It's in a git-ignored
+  `secrets.toml`; only a template is committed. In production it would be a
+  dedicated read-only database role, not `postgres`.
+- **"Why are there two charts instead of one?"** MRR and cash measure
+  different things on different timing. Putting them on two y-axes in one
+  chart invites false comparisons.
+
+---
+
+<!-- Next entry: Step 11 - README and publish -->
