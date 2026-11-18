@@ -21,7 +21,7 @@ It's updated at the end of every step.
 | 4 | 8. Headless data-quality check | 6 | ✅ Done: finds all 4 seeded issues, exit 1 |
 | 4 | 9. Schedule → log entry → unschedule | 6 | ✅ Done: ran unattended 16:14, task deleted |
 | 5 | 10. Streamlit dashboard + screenshot | 7 | ✅ Done: every number matches the eval |
-| 5 | 11. README + publish to GitHub | - | 🟨 README done, publish pending |
+| 5 | 11. README + publish to GitHub | - | ✅ Done: public at github.com/kobi38/northwind-data-platform |
 
 ---
 
@@ -959,12 +959,23 @@ remove it from history.
 | Personal email inside files | none |
 | Commit author email | the git author email is on every commit, which is public on GitHub. That's the human's decision (see 11c). |
 
-### 11c. Publishing *(in progress)*
+### 11c. Publishing
 
-Needs the GitHub CLI (`winget install GitHub.cli`, then `gh auth login`,
-done by the human because it's their account). `git push` is in the `ask`
-list in `.claude/settings.json`, so Claude has to get explicit approval
-before pushing anything.
+**Repo:** <https://github.com/kobi38/northwind-data-platform> (public).
+
+| Step | What and why |
+|---|---|
+| Install and log in to `gh` | Done by the human (it's their account). The browser login first failed with `request_failed`. Network, clock and proxy were checked and were all fine, so it was a transient GitHub error; the retry with the one-time device code worked. |
+| **Hide the personal email** | Every commit carried the human's Gmail as author, which GitHub shows publicly. Because nothing had been pushed yet, the 14 commits were rewritten (`git filter-branch --env-filter`) to the GitHub **no-reply** address `<id>+<login>@users.noreply.github.com`. **Proof nothing else changed:** each commit's tree hash (a fingerprint of all its files) was recorded before and after, and all 14 are identical. The filter-branch backup ref (which still held the old email) was deleted, and the repo's `user.email` was set to the no-reply address so future commits stay private. |
+| Explicit approval | `git push` is in the `ask` list. Claude asked once more, naming exactly what would be public, and the human approved. |
+| Create and push | `gh repo create kobi38/northwind-data-platform --public --source . --remote origin --push` |
+| Verify on GitHub | Public, `main`; remote HEAD equals local HEAD; 54 files, none of them a secrets/env/local-settings file; the screenshot is served (`200 image/png`); every commit shows only the no-reply email and still links to the `kobi38` profile. |
+
+**Why rewrite instead of just changing the setting?** `git config
+user.email` only affects *future* commits. The 14 existing commits already
+had the Gmail baked in, and pushing them would publish it permanently.
+Rewriting is only safe *before* the first push; afterwards it would break
+everyone's clones.
 
 ### How to explain step 11 in 30 seconds
 > "The README is written for someone who'll never talk to me: what the
@@ -985,4 +996,21 @@ before pushing anything.
 
 ---
 
-<!-- Next entry: Step 11c - publish result -->
+## Done: the checklist from the spec
+
+| Deliverable | Where |
+|---|---|
+| Repo with deliberate permissions, read-only MCP | `.mcp.json`, `.claude/settings.json`, `docs/permissions.md` |
+| Semantic layer + `CLAUDE.md` | `docs/semantic-layer.md`, `CLAUDE.md` |
+| Eval before/after with write-up | `eval/results-before.yaml`, `eval/results.yaml`, `eval/FINDINGS.md` |
+| A skill | `.claude/skills/run-eval/` |
+| A plan made in plan mode | `docs/plans/01-destructive-sql-hook.md` |
+| A hook that enforces a rule, with evidence it fired | `.claude/hooks/`, `docs/evidence/`, `logs/hook.log` |
+| Headless script, structured output, exit codes | `scripts/dq_check.py` |
+| Scheduled, logged unattended run, schedule removed | `logs/dq_check.log` (`invoked_by: task-scheduler`), step 9 |
+| Streamlit dashboard with correct numbers + screenshot | `dashboard/`, `docs/images/dashboard.png` |
+| README, public repo | `README.md`, github.com/kobi38/northwind-data-platform |
+
+**One loose end, stated honestly:** the dashboard's read-only transaction
+setting is built in but hasn't been tested live, because that test needs the
+human's database login.
