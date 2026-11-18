@@ -21,7 +21,7 @@ It's updated at the end of every step.
 | 4 | 8. Headless data-quality check | 6 | ✅ Done: finds all 4 seeded issues, exit 1 |
 | 4 | 9. Schedule → log entry → unschedule | 6 | ✅ Done: ran unattended 16:14, task deleted |
 | 5 | 10. Streamlit dashboard + screenshot | 7 | ✅ Done: every number matches the eval |
-| 5 | 11. README + publish to GitHub | - | ⬜ |
+| 5 | 11. README + publish to GitHub | - | 🟨 README done, publish pending |
 
 ---
 
@@ -927,4 +927,62 @@ streamlit run dashboard/app.py      # then open http://localhost:8501
 
 ---
 
-<!-- Next entry: Step 11 - README and publish -->
+## Step 11: README and publishing
+
+**Goal (from the spec):** a README that "does the work when you are not in
+the room": what it is (in business terms), a screenshot near the top, the
+architecture, how to run it, why each component exists, and honest
+limitations. Then a public GitHub repo.
+
+### 11a. The README: [`README.md`](../README.md)
+
+| Section | Choice and why |
+|---|---|
+| Opening paragraph | The business problem (undocumented numbers, analysts disagreeing), not "a course project" |
+| Screenshots | All three side by side, right under the intro. That's the fastest proof it works. The caption states the March numbers and that they match the eval. |
+| Architecture | A **Mermaid** diagram, which GitHub draws from text, so it stays editable and diffable. It shows the two paths to the database (agent via MCP behind three locks; dashboard via the pooler, read-only) and that both use the same rules. |
+| Component table | For each of the 7 components: where, what, and **what goes wrong without it**. That last column is the "why it exists" the spec asks for. |
+| Results | Eval, hook, schedule and dashboard, each with a link to its evidence file |
+| How to run | Clone, connect (including the folder-trust and `/mcp` traps we hit), ask, eval, check, dashboard, tests |
+| Limitations | Seven honest ones, each with what I'd build next |
+
+### 11b. Pre-publish scan
+
+Before anything goes public, the **whole git history** (not just the latest
+commit) was scanned, because deleting a secret in a later commit doesn't
+remove it from history.
+
+| Check | Result |
+|---|---|
+| Passwords, API keys, JWTs, `sb_secret_`, `service_role`, connection strings with passwords, GitHub tokens, private keys | none in any of the 15 commits |
+| `.env`, `secrets.toml`, `*.pem`, `*.key`, `settings.local.json` ever committed | never |
+| Personal email inside files | none |
+| Commit author email | the git author email is on every commit, which is public on GitHub. That's the human's decision (see 11c). |
+
+### 11c. Publishing *(in progress)*
+
+Needs the GitHub CLI (`winget install GitHub.cli`, then `gh auth login`,
+done by the human because it's their account). `git push` is in the `ask`
+list in `.claude/settings.json`, so Claude has to get explicit approval
+before pushing anything.
+
+### How to explain step 11 in 30 seconds
+> "The README is written for someone who'll never talk to me: what the
+> business problem is, a screenshot of the working dashboard, a diagram of
+> how agent, guards, check and dashboard connect, how to run each part, and
+> for every component what would break without it. Before publishing, I
+> scanned the entire git history for secrets, because a password deleted in
+> a later commit is still public in the earlier one."
+
+### Questions you might be asked
+- **"Why scan history, not just the files?"** Git keeps every version.
+  Anyone can check out an old commit, so a removed secret is still leaked.
+- **"Why is the answer key in a public repo?"** It ships with the
+  assignment and the grader needs it. What matters is that the *agent* can't
+  read it during the eval, which the deny rules enforce.
+- **"Why Mermaid instead of an image?"** It's text: reviewable in a diff,
+  editable without a design tool, and GitHub renders it.
+
+---
+
+<!-- Next entry: Step 11c - publish result -->
