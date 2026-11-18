@@ -47,5 +47,19 @@
       "Bash(rm -rf *)",
       "PowerShell(Remove-Item * -Recurse*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__.*__(execute_sql|apply_migration)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_destructive_sql.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }
