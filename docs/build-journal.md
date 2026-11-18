@@ -891,10 +891,10 @@ app itself was run headless (Streamlit `AppTest`) against the live database:
 Three independent paths now give the same numbers: the agent with the
 semantic layer, the agent-run SQL, and the dashboard.
 
-**Screenshots** (taken by the human from the running app, March selected):
-- [`dashboard.png`](images/dashboard.png): title, month selector, KPI tiles
-- [`dashboard2.png`](images/dashboard2.png): cash, the MRR and cash charts (with a hover tooltip)
-- [`dashboard3.png`](images/dashboard3.png): MRR by account, the data-quality table
+**Screenshot:** [`docs/images/dashboard.png`](images/dashboard.png), taken by
+the human from the running app with March selected and a wide window, so all
+five KPI tiles and both charts fit in one image. (A first set of three narrow
+screenshots was replaced by this one.)
 
 **How to run it:**
 ```
@@ -939,7 +939,7 @@ limitations. Then a public GitHub repo.
 | Section | Choice and why |
 |---|---|
 | Opening paragraph | The business problem (undocumented numbers, analysts disagreeing), not "a course project" |
-| Screenshots | All three side by side, right under the intro. That's the fastest proof it works. The caption states the March numbers and that they match the eval. |
+| Screenshot | One wide shot (all KPI tiles and both charts), right under the intro. That's the fastest proof it works. The caption states the March numbers and that they match the eval. |
 | Architecture | A **Mermaid** diagram, which GitHub draws from text, so it stays editable and diffable. It shows the two paths to the database (agent via MCP behind three locks; dashboard via the pooler, read-only) and that both use the same rules. |
 | Component table | For each of the 7 components: where, what, and **what goes wrong without it**. That last column is the "why it exists" the spec asks for. |
 | Results | Eval, hook, schedule and dashboard, each with a link to its evidence file |

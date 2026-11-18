@@ -9,15 +9,12 @@ written definition of every metric, an AI agent that must follow it, guards
 that stop the agent from changing data, a data-quality check that runs on a
 schedule by itself, and a dashboard anyone can open.
 
-<p align="center">
-  <img src="docs/images/dashboard.png" width="32%" alt="Dashboard: month selector and KPI tiles (MRR $1,394, ARR $16,728, 4 paying customers, 2 trials)">
-  <img src="docs/images/dashboard2.png" width="32%" alt="Dashboard: MRR at month end and cash collected by month, Jan-Mar 2026">
-  <img src="docs/images/dashboard3.png" width="32%" alt="Dashboard: MRR by account and the four usage_daily rows that fail data-quality rules">
-</p>
+![Northwind Cloud dashboard for March 2026: KPI tiles (MRR $1,394, ARR $16,728, 4 paying customers, 2 trials, $642.33 cash) above bar charts of MRR at month end and cash collected by month, Jan to Mar 2026](docs/images/dashboard.png)
 
 *The dashboard for March 2026: MRR **$1,394**, **4** paying customers,
 **2** trials, **$13,428.09** cash collected in Q1. Every figure matches the
-graded eval answers.*
+graded eval answers. Further down, the page breaks MRR down by account and
+lists the `usage_daily` rows that fail data-quality rules.*
 
 ---
 
