@@ -1,0 +1,12 @@
+{
+  "id": "q2",
+  "question": "Using Supabase, what was Vertex Logistics' MRR in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "Vertex Logistics' MRR in March 2026 was **800.00 USD**. That is the month-end snapshot at 2026-03-31, using the semantic-layer definition.\n\nVertex has one subscription, SUB-7001. It is an active annual contract of 9,600 that started 2026-01-01 and has no end date, so it was live on 2026-03-31. Divided by 12 for monthly, that gives 800. The account is non-internal, so it isn't excluded.\n\nANSWER: 800",
+  "extracted": 800.0,
+  "num_turns": 5,
+  "cost_usd": 0.0746444,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

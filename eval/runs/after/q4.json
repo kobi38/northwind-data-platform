@@ -1,0 +1,12 @@
+{
+  "id": "q4",
+  "question": "Using Supabase, how much cash did we actually collect in Q1 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "Cash collected in Q1 2026 (Jan 1 to Mar 31) was **13,428.09 USD**, from 12 paid invoices.\n\nI used the definition in the semantic layer:\n- It is the sum of `total_amount` on `paid` invoices, so it includes tax.\n- Invoices are dated by `invoice_date`.\n- Internal demo accounts are excluded.\n- `open`, `refunded` and `void` invoices are excluded.\n\nIf you wanted revenue excluding tax, that would be a different figure.\n\nANSWER: 13428.09",
+  "extracted": 13428.09,
+  "num_turns": 3,
+  "cost_usd": 0.20218260000000005,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

@@ -1,0 +1,9 @@
+# run: after | model: claude-sonnet-5-5 | 2026-11-18T15:44:40 | one fresh session per question (eval/ask_questions.py)
+q1: 1394.0
+q2: 800.0
+q3: 4.0
+q4: 13428.09
+q5: 2.0
+c1: 1394.0
+c2: 1394.0
+c3: 1394.0

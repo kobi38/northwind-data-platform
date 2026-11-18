@@ -1,0 +1,12 @@
+{
+  "id": "q3",
+  "question": "Using Supabase, how many paying customers did we have in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "We had **4 paying customers** in March 2026.\n\nThis is a month-end snapshot as of 2026-03-31, using the definition in `docs/semantic-layer.md`. It counts distinct non-internal accounts with at least one live, non-trial subscription on that date. Trials and internal demo tenants are excluded. `past_due` accounts still count, because their contract is in force.\n\nANSWER: 4",
+  "extracted": 4.0,
+  "num_turns": 3,
+  "cost_usd": 0.0582348,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

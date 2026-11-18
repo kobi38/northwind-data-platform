@@ -14,8 +14,8 @@ It's updated at the end of every step.
 | 1 | 1. Repo, `.gitignore`, MCP, permissions | 1 | ✅ Done (one action left for you, see below) |
 | 1 | 2. Semantic layer + `CLAUDE.md` | 2 | ✅ Done (written after the baseline, on purpose) |
 | 2 | 3. Baseline eval (no semantic layer) | 3 | ✅ Done: 5/5, consistency PASS |
-| 2 | 4. "Run the eval" skill | 4 | ⬜ |
-| 2 | 5. Grade + diagnose failures | 3 | ⬜ |
+| 2 | 4. "Run the eval" skill | 4 | ✅ Done |
+| 2 | 5. After-run, grade, write-up | 3 | ✅ Done: 5/5 → 5/5, hedging gone, cost −40% |
 | 3 | 6. Plan-mode plan saved | evidence | ⬜ |
 | 3 | 7. Destructive-SQL hook + proof | 5 | ⬜ |
 | 4 | 8. Headless data-quality check | 6 | ⬜ |
@@ -457,4 +457,94 @@ The real test, whether answers *change* with the document present, is the
 
 ---
 
-<!-- Next entry: Step 4 - eval skill / Step 5 - after-run and diagnosis -->
+## Step 4: The skill, `.claude/skills/run-eval/`
+
+**Concept: skill.** A skill is a written procedure Claude can load on demand,
+a `SKILL.md` file with a name, a description (so Claude knows *when* to use
+it), and the steps. You can trigger it by typing `/run-eval`, or Claude picks
+it up when you say "run the eval". The point: a procedure you repeat is done
+**the same way every time**, not however it gets remembered that day.
+
+**Why this procedure?** Every change to the semantic layer should be followed
+by re-running the eval. That's how you know a change helped. It's the
+procedure that repeats most in this project.
+
+**What the skill does**
+1. Runs `eval/ask_questions.py` (8 fresh headless sessions) → `eval/results.yaml`.
+2. Grades with `run_eval.py` → `scorecard.txt`, plus a before-and-after
+   comparison → `scorecard-compare.txt`.
+3. **Reads the answers, not just the score:** does each one cite the layer,
+   does it still hedge, which rule is missing behind any failure.
+4. Reports and *suggests* layer edits, without applying them unasked.
+
+**Rules written into the skill:** never open the answer key, never answer the
+questions in the current session (they'd see each other), never hand-edit a
+results file ("a wrong number is the finding").
+
+**Supporting change:** `settings.json` now allows `python eval/ask_questions.py`
+so the skill runs without a permission prompt.
+
+**Bug found while using it:** the first run crashed *after* saving results,
+because a relative `--out` path broke a print statement. Fixed by resolving
+`--out` against the repo root. Using a tool for real finds what writing it
+doesn't.
+
+---
+
+## Step 5: After-run, grading and the write-up
+
+**What we did:** ran the skill's procedure with the semantic layer in place,
+same model (Sonnet), same isolation, same questions.
+
+**Result**
+```
+Accuracy:    5/5 -> 5/5      Consistency: PASS -> PASS
+Cost:        $1.05 -> $0.63  Avg turns:   3.9 -> 3.25
+```
+
+**The finding is in the answers, not the score.** The baseline offered a
+competing number on MRR, paying customers and cash ("if you exclude
+past_due…", "if paying means a paid invoice…", "excluding tax…"). With the
+layer, every answer:
+- cited `docs/semantic-layer.md` by name,
+- stated the definition it applied (e.g. "month-end snapshot as of 2026-03-31"),
+- gave **one** number, quoting the layer's *reason* (e.g. past_due counts
+  "because their contract is in force").
+
+It was also 40% cheaper: the agent stopped exploring the schema to rediscover
+rules.
+
+**The write-up: `eval/FINDINGS.md`.** With no failures, the spec asks *what the
+eval doesn't test*. The headline gaps:
+1. **History.** In March, status and dates agree, so the eval can't tell a
+   correct date-based definition from a wrong status-based one. February
+   would.
+2. **Mid-month upgrades.** Snapshot vs overlap (Cobalt double-count).
+3. **Only one model, one run per question.**
+4. **Multi-currency, dirty usage data, unanswerable periods:** never exercised.
+
+It also proposes five discriminating questions to add next.
+
+### How to explain steps 4 and 5 in 30 seconds
+> "I packaged the eval as a skill so re-running it after any doc change is one
+> command and always done the same way. After the semantic layer, the score
+> stayed 5/5, so the score alone says nothing changed. The answers say
+> otherwise: the hedges disappeared, every answer cited the definition it
+> used, and cost dropped 40%. Since nothing failed, my write-up focuses on
+> what the eval can't see: the questions only ask about March, where the
+> dangerous status-vs-date mistake happens to give the right answer."
+
+### Questions you might be asked
+- **"Your score didn't improve, so what did the semantic layer achieve?"**
+  It changed *why* the answers are right: from a strong model's guess to a
+  documented, cited rule. That survives model changes and rephrasings, and
+  the guess doesn't.
+- **"How would you make the eval catch more?"** Add February questions
+  (status trap), Cobalt in February (upgrade double-count), and "MRR right
+  now" (data ends in March). Listed in `FINDINGS.md`.
+- **"Is 5/5 from one run reliable?"** It's one sample per question. Repeated
+  runs and a second model would make it stronger. Listed as a limitation.
+
+---
+
+<!-- Next entry: Step 6 - plan mode / Step 7 - hook -->

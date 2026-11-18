@@ -142,7 +142,7 @@ def main():
         total_cost += record.get("cost_usd") or 0
         print(f"{qid}: {numbers}   ({record.get('error') or 'ok'})")
 
-    out = Path(args.out) if args.out else REPO / "eval" / f"results-{args.label}.yaml"
+    out = REPO / args.out if args.out else REPO / "eval" / f"results-{args.label}.yaml"
     header = (
         f"# run: {args.label} | model: {MODEL} | "
         f"{datetime.now().isoformat(timespec='seconds')} | "

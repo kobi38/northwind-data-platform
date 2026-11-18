@@ -1,0 +1,12 @@
+{
+  "id": "c1",
+  "question": "Using Supabase, what was our MRR in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "March 2026 MRR was **1,394.00 USD**. It is the month-end snapshot as of 2026-03-31, using the definition in `docs/semantic-layer.md`.\n\n- **Included:** non-internal accounts and non-trial subscriptions that were live on 2026-03-31. Annual amounts are divided by 12.\n- **Customers:** 4 paying accounts, all billed in USD.\n- **Compared with February:** the semantic layer gives February as 1,539.00. The drop is consistent with Harbor Freight's churn, which was live through Feb 28 at 190.00. I haven't broken March down by subscription to confirm.\n\nANSWER: 1394.00",
+  "extracted": 1394.0,
+  "num_turns": 3,
+  "cost_usd": 0.054946300000000003,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

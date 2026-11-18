@@ -12,6 +12,8 @@
       "mcp__supabase__search_docs",
 
       "Bash(python run_eval.py*)",
+      "Bash(python eval/ask_questions.py*)",
+      "PowerShell(python eval/ask_questions.py*)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",

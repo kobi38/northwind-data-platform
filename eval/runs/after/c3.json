@@ -1,0 +1,12 @@
+{
+  "id": "c3",
+  "question": "Using Supabase, how much recurring revenue were we running at in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "MRR at the March 2026 month-end snapshot (2026-03-31) was **1,394.00 USD**. That's from 4 paying customers.\n\nI used the semantic layer's definition. It sums the monthly-normalized contract amount of every live, non-trial subscription belonging to a non-internal account, and annual contracts are divided by 12. All the rows were USD, so there was no currency mixing.\n\nANSWER: 1394.00",
+  "extracted": 1394.0,
+  "num_turns": 3,
+  "cost_usd": 0.0593561,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

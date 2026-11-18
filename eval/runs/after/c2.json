@@ -1,0 +1,12 @@
+{
+  "id": "c2",
+  "question": "Using Supabase, what is our monthly recurring revenue for March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "March 2026 MRR is **$1,394.00 USD**.\n\nI used the month-end snapshot at 2026-03-31 from the semantic layer. That counts non-internal, non-trial subscriptions live on that date, with annual amounts divided by 12. Five subscriptions qualified, all in USD.\n\nANSWER: 1394.00",
+  "extracted": 1394.0,
+  "num_turns": 3,
+  "cost_usd": 0.058905,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

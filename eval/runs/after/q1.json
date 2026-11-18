@@ -1,0 +1,12 @@
+{
+  "id": "q1",
+  "question": "Using Supabase, what was our MRR in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "March 2026 MRR was **$1,394.00**.\n\nI used the canonical MRR definition from `docs/semantic-layer.md`. It is a month-end snapshot as of 2026-03-31. It counts non-trial subscriptions from non-internal accounts that were live on that date, with annual amounts divided by 12. It uses the subscription `amount`, not the plan list price.\n\nANSWER: 1394.00",
+  "extracted": 1394.0,
+  "num_turns": 3,
+  "cost_usd": 0.058682899999999996,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}
