@@ -1,0 +1,12 @@
+{
+  "id": "q4",
+  "question": "Using Supabase, how much cash did we actually collect in Q1 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "Cash actually collected in Q1 2026 (Jan 1 – Mar 31) was **13,428.09 USD**. That is the sum of 12 invoices with `payment_status = 'paid'`.\n\nI made these calls:\n- **Included:** only paid invoices, taken at their full `total_amount`. Cash received includes the tax collected. Excluding tax would give 11,477.00.\n- **Excluded internal accounts:** this removes INV-3014 (Northwind Demo, 28,080.00), which is flagged `is_internal`. It is not real customer cash.\n- **Excluded unpaid or reversed invoices:**\n  - INV-3009 was refunded (57.33).\n  - INV-3015 is still open (52.65).\n  - INV-3016 was voided (500.00).\n- **Dates:** invoices are dated within the quarter. The table has no payment-date column, so invoice date stands in for collection date.\n- **Currency:** every invoice in the sum is USD.\n- **Other tables:** I did not use the `f_doc` tables. They hold a separate set of documents with mixed currencies and unlabeled status codes.\n\nANSWER: 13428.09",
+  "extracted": 13428.09,
+  "num_turns": 5,
+  "cost_usd": 0.21565710000000002,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

@@ -1,0 +1,12 @@
+{
+  "id": "q3",
+  "question": "Using Supabase, how many paying customers did we have in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "We had 4 paying customers in March 2026: ACC-1001, ACC-1002, ACC-1003 and ACC-1004. I counted external accounts with a non-trial subscription that was live at some point in March. Querying `accounts`, `subscriptions` and `invoices` gave these results:\n\n- **Counted:**\n  - **ACC-1001:** an annual Enterprise plan, paid up front in January, so it was still paying in March even though it has no paid March invoice.\n  - **ACC-1002:** a monthly Business plan with a paid March invoice.\n  - **ACC-1003:** a monthly Business plan with a paid March invoice.\n  - **ACC-1004:** a Business plan since 15 Feb, with a paid invoice on 15 March.\n- **Excluded:**\n  - **ACC-9900:** an internal account.\n  - **ACC-1005:** churned on 28 Feb.\n  - **ACC-1006 and ACC-1007:** still on trial.\n\nIf you define \"paying\" as having a paid invoice dated in March, the count is 3, because ACC-1001 drops out. ACC-1002's extra Starter subscription is past due and its March invoice is still open, but that doesn't change the count because the account has a paid Business invoice. ACC-1001's 20 March invoice is void, so it doesn't count either way.\n\nANSWER: 4",
+  "extracted": 4.0,
+  "num_turns": 5,
+  "cost_usd": 0.21531229999999996,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

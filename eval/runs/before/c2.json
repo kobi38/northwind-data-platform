@@ -1,0 +1,12 @@
+{
+  "id": "c2",
+  "question": "Using Supabase, what is our monthly recurring revenue for March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "March 2026 MRR is **$1,394**.\n\nI counted subscriptions in effect during March 2026, took annual plans at amount ÷ 12, and excluded trials and the internal account. These are the subscriptions that went into it:\n\n| Subscription | Billing | Monthly value |\n|---|---|---|\n| SUB-7001 | annual, 9,600 | 800 |\n| SUB-7002 | monthly | 180 |\n| SUB-7003 | monthly | 170 |\n| SUB-7005 | monthly | 199 |\n| SUB-7010 | monthly, past_due | 45 |\n| **Total** | | **1,394** |\n\nThese were left out:\n- **SUB-7004 and SUB-7006:** they ended in February (cancelled 14 Feb, churned 28 Feb).\n- **SUB-7007 and SUB-7008:** they are still trials and not paying.\n- **SUB-7009:** it belongs to the internal account ACC-9900.\n\nSUB-7010 is past due, and I counted it because the subscription is still live. If you'd rather count only active subscriptions, MRR is 1,349.\n\nANSWER: 1394",
+  "extracted": 1394.0,
+  "num_turns": 4,
+  "cost_usd": 0.0589954,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

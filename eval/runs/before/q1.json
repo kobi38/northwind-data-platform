@@ -1,0 +1,12 @@
+{
+  "id": "q1",
+  "question": "Using Supabase, what was our MRR in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "MRR for March 2026 was **1,394 USD**. I used the `subscriptions` and `accounts` tables.\n\nI counted every non-internal subscription that was live in March and not a trial, with annual plans divided by 12:\n\n| Subscription | Plan | MRR |\n|---|---|---|\n| SUB-7001 | Enterprise, annual (9,600 / 12) | 800 |\n| SUB-7002 | Business | 180 |\n| SUB-7003 | Business | 170 |\n| SUB-7005 | Business | 199 |\n| SUB-7010 | Starter, past_due, started 2026-03-01 | 45 |\n| **Total** | | **1,394** |\n\nI left out these subscriptions:\n- **SUB-7009:** it belongs to the internal account ACC-9900.\n- **SUB-7007 and SUB-7008:** both are still trials, so they aren't paying.\n- **SUB-7004 and SUB-7006:** both ended in February.\n\nIf you'd rather exclude past_due subscriptions, MRR would be 1,349.\n\nANSWER: 1394",
+  "extracted": 1394.0,
+  "num_turns": 4,
+  "cost_usd": 0.2039288,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

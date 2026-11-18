@@ -1,0 +1,12 @@
+{
+  "id": "q2",
+  "question": "Using Supabase, what was Vertex Logistics' MRR in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "Annual billing at 9600 USD, active throughout March 2026 (started 2026-01-01, not ended). MRR = 9600 / 12 = 800.\n\nVertex Logistics (ACC-1001) has one subscription, SUB-7001, on the Enterprise plan. It's billed annually at 9,600 USD and was active in March 2026. Normalizing the annual amount to a monthly figure gives 9,600 / 12 = 800.\n\nANSWER: 800",
+  "extracted": 800.0,
+  "num_turns": 3,
+  "cost_usd": 0.18889530000000002,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

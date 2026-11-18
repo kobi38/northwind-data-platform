@@ -1,0 +1,12 @@
+{
+  "id": "c3",
+  "question": "Using Supabase, how much recurring revenue were we running at in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "MRR in March 2026 was **$1,394**.\n\nI normalised each subscription to a monthly amount and counted only the ones that were live and paying in March 2026:\n\n| Subscription | Account | Calculation | MRR |\n|---|---|---|---|\n| SUB-7001 | Vertex Logistics | $9,600 annual ÷ 12 | 800 |\n| SUB-7002 | Brightpath Health | $180 monthly | 180 |\n| SUB-7003 | Nordwind Analytik | $170 monthly | 170 |\n| SUB-7005 | Cobalt Studio | $199 monthly | 199 |\n| SUB-7010 | Brightpath Health | $45 monthly, started 2026-03-01 | 45 |\n| **Total** | | | **1,394** |\n\nI left out the following:\n- **Internal account:** SUB-7009 (Northwind Demo, $24,000 annual) is flagged `is_internal`, so it isn't real revenue.\n- **Trials:** SUB-7007 and SUB-7008 haven't started paying yet.\n- **Ended before March:** SUB-7004 ended 2026-02-14 and SUB-7006 ended 2026-02-28.\n\nI counted SUB-7010 even though its status is `past_due`, because the customer is still subscribed. If you treat past-due as not counting, MRR drops to $1,349.\n\nANSWER: 1394",
+  "extracted": 1394.0,
+  "num_turns": 3,
+  "cost_usd": 0.056646199999999994,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}

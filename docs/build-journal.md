@@ -13,7 +13,7 @@ It's updated at the end of every step.
 | 0 | Survey the project | - | ✅ Done |
 | 1 | 1. Repo, `.gitignore`, MCP, permissions | 1 | ✅ Done (one action left for you, see below) |
 | 1 | 2. Semantic layer + `CLAUDE.md` | 2 | ⬜ |
-| 2 | 3. Baseline eval (optional) | 3 | ⬜ |
+| 2 | 3. Baseline eval (no semantic layer) | 3 | ✅ Done: 5/5, consistency PASS |
 | 2 | 4. "Run the eval" skill | 4 | ⬜ |
 | 2 | 5. Grade + diagnose failures | 3 | ⬜ |
 | 3 | 6. Plan-mode plan saved | evidence | ⬜ |
@@ -202,6 +202,147 @@ database access in this project, because the old connector is denied on purpose.
 - **"Why allow `execute_sql` without asking?"** The server is read-only, so the
   worst a query can do is read. Asking every time adds friction without adding
   safety.
+
+---
+
+## Step 3 prep: testing the connection headlessly
+
+**Decision:** run the **baseline eval first** (option A), *before* the semantic
+layer exists. Then a before-and-after scorecard can show which written rule fixed
+which question. The baseline is only possible now: once `docs/semantic-layer.md`
+exists, a "no rules" run can't be measured again.
+
+**What we did:** a cheap smoke test, one `claude -p` call (Haiku, 4-turn
+cap, no built-in tools, only `list_tables` allowed) asking for the table list.
+
+**What happened**
+1. ✅ The read-only `supabase` server from `.mcp.json` loaded and was logged in.
+   Claude tried to call `list_tables`.
+2. ❌ The call was **denied**. Claude Code printed:
+   *"Ignoring 13 permissions.allow entries from .claude/settings.json: this
+   workspace has not been trusted."*
+   **Concept: workspace trust.** A cloned repo could ship a `settings.json`
+   that allows dangerous things. So Claude Code ignores a folder's `allow`
+   rules until a human has accepted the folder once in the interactive
+   "trust this folder?" dialog. **Deny rules still apply**, because loosening
+   needs trust and tightening doesn't.
+3. ⭐ **The agent refused to work around the denial.** It noticed it *could* get
+   the same answer through `execute_sql`, said that would get around the
+   block, and stopped to ask. A safe agent treats a denial as a decision,
+   not an obstacle.
+
+**Fix, and a second surprise:** the plan was for a human to run `claude` once
+in the folder and accept the trust dialog. Deciding to trust a folder is the
+user's call, not the agent's. The user did, but the warning stayed. Checking
+`~/.claude.json` showed why: the **parent** folder `Agentic_AI_Course` was
+already trusted, so the interactive session never showed a dialog and saved
+nothing for `final-project`. Headless mode, however, checks the *exact* path.
+With the user's decision made, the agent backed up the config
+(`~/.claude.json.bak-before-trust`) and set `hasTrustDialogAccepted: true` for
+that exact path. The re-test then read all 9 tables with zero denials.
+
+**Lesson for the scheduled job (step 9):** interactive and headless sessions
+can disagree about the same folder. A check that works in your terminal can
+still fail at 6am. Test it the way it will actually run.
+
+**Questions you might be asked**
+- **"Why didn't your allow rules work?"** The folder wasn't trusted yet, a
+  safety feature against malicious repos. Deny rules were enforced the whole time.
+- **"Will the scheduled job hit this too?"** Yes, if the folder isn't trusted.
+  That's one of the failures that only shows up unattended, which is why the
+  spec insists on a real scheduled run.
+
+---
+
+## Step 3: Baseline eval (before any semantic layer)
+
+**Goal:** measure how well the agent answers the 8 questions with **no**
+business definitions written down. Repeating this after the semantic layer
+exists shows what the documentation actually changed.
+
+### 3a. A reusable question runner: `eval/ask_questions.py`
+
+**Concept: an eval has two halves.**
+- **The run** asks the questions and records what came back. That's our new script.
+- **The grade** compares the recorded numbers to the answer key. That's
+  `run_eval.py`, which we were given.
+
+Keeping them separate means the system being measured never sees the key.
+
+**What the script does**
+1. Reads the 8 questions from `questions.yaml`.
+2. Starts a **separate, fresh `claude -p` session for each question**
+   (`--no-session-persistence`, 4 in parallel). The rules require fresh
+   sessions: if c2 could see c1's answer, the consistency test would measure
+   nothing.
+3. Adds one formatting line to each question ("end with `ANSWER: <number>`")
+   so the number can be read out mechanically. It says nothing about *how* to
+   compute the answer.
+4. Saves the full answer of every session to `eval/runs/before/<id>.json` as
+   evidence, and the numbers only to `eval/results-before.yaml`.
+
+**Guardrails on each session**
+| Flag | Why |
+|---|---|
+| `--model claude-sonnet-5-5` | One fixed model, so before and after runs are comparable |
+| `--tools Read` + Supabase read tools only | Same toolset in every run. Read is there so the *after* run can open the semantic layer. |
+| `--disallowedTools Read(./project.md) Read(./eval/**) …` | Blocks files that would leak rules or answers: the spec spells out the MRR rules, `eval/` holds old answers and the key |
+| `--permission-mode dontAsk` | Unattended: anything not allowed is denied, never prompted |
+| `--max-turns 15`, 300 s timeout | A stuck session can't loop or bill forever |
+
+### 3b. Result
+
+```
+q1-q5: 5/5 PASS    consistency c1-c3: PASS    cost ≈ $1.05
+```
+(Full scorecard: `eval/scorecard-before.txt`. No session even tried to read a
+blocked file: zero permission denials.)
+
+### 3c. What a 5/5 baseline means (the important part)
+
+The schema is readable (`is_internal`, `billing_interval`, `status`), and a
+strong model inferred the conventional rules: annual ÷ 12, exclude trials,
+exclude internal accounts, paid invoices only. **But read the answers, not
+just the score.** The agent openly made three judgment calls that the data
+can't settle:
+
+| Question | Agent's guess | It also offered |
+|---|---|---|
+| MRR | `past_due` still counts as live | a lower MRR if excluded |
+| Cash collected | includes tax | a lower figure net of tax |
+| Paying customers | an account with a live, non-trial contract | a lower count if "paying" means "paid an invoice in March" |
+
+It guessed right each time. A different model, a rephrased question or a new
+analyst could guess the other way. **That's the job of the semantic layer:
+turn guesses into written decisions.**
+
+**What this eval does *not* test** (the start of the write-up):
+- **Model variation:** only one strong model was measured. A cheaper model
+  (like the Haiku the scheduled job will use) wasn't.
+- **Hard ambiguity:** no question forces a choice where the "obvious"
+  convention is wrong for *this* business.
+- **Other months:** everything is March / Q1. Mid-month starts, proration and
+  the February upgrade-and-churn transitions are barely exercised.
+- **Multi-currency:** every Northwind row is USD. The leftover `f_doc` tables
+  are multi-currency, and the agent correctly ignored them on its own.
+- **Data quality:** `usage_daily`'s dirty rows aren't touched by any question.
+
+### How to explain step 3 in 30 seconds
+> "Before writing any documentation I measured the agent cold: 8 questions,
+> each in a fresh headless session, with the spec and answer key blocked. It
+> scored 5/5. Reading its answers showed why that's not the whole story: it
+> made three business-rule guesses it couldn't verify from the data, and said
+> so. The semantic layer exists to turn those guesses into decisions, and the
+> after run will show whether answers stop hedging."
+
+### Questions you might be asked
+- **"If it already scored 5/5, why build a semantic layer?"** The score
+  measures this model on these 8 questions. The answers showed three guesses,
+  and a different model or question could break any of them. Documentation is
+  for every future question, not just these eight.
+- **"How do you know it didn't cheat?"** The answer key and the schema
+  comments were denied in settings, the spec and `eval/` were denied per run,
+  and the logs show zero attempts to read any blocked file.
 
 ---
 

@@ -1,0 +1,12 @@
+{
+  "id": "q5",
+  "question": "Using Supabase, how many accounts were on trial in March 2026?",
+  "model": "claude-sonnet-5-5",
+  "answer_text": "Two accounts were on trial in March 2026: ACC-1006 and ACC-1007.\n\n- **ACC-1006:** its subscription SUB-7007 has status `trial`, started 2026-02-01 and has no end date.\n- **ACC-1007:** its subscription SUB-7008 has status `trial`, started 2026-02-10 and has no end date.\n\nNeither account is internal. The only other account tied to March is ACC-1002, which started SUB-7010 on 2026-03-01, but that subscription is `past_due`, not a trial.\n\nThe data has no explicit trial end date, so I counted a trial as running in March if its status is still `trial` with no end date.\n\nANSWER: 2",
+  "extracted": 2.0,
+  "num_turns": 3,
+  "cost_usd": 0.0499121,
+  "is_error": false,
+  "permission_denials": [],
+  "stderr": null
+}
