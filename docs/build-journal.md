@@ -18,7 +18,7 @@ It's updated at the end of every step.
 | 2 | 5. After-run, grade, write-up | 3 | ✅ Done: 5/5 → 5/5, hedging gone, cost −40% |
 | 3 | 6. Plan-mode plan saved | evidence | ✅ Done |
 | 3 | 7. Destructive-SQL hook + proof | 5 | ✅ Done: blocked a real DELETE in a fresh session |
-| 4 | 8. Headless data-quality check | 6 | ⬜ |
+| 4 | 8. Headless data-quality check | 6 | ✅ Done: finds all 4 seeded issues, exit 1 |
 | 4 | 9. Schedule → log entry → unschedule | 6 | ⬜ |
 | 5 | 10. Streamlit dashboard + screenshot | 7 | ⬜ |
 | 5 | 11. README + publish to GitHub | - | ⬜ |
@@ -649,4 +649,93 @@ regardless).
 
 ---
 
-<!-- Next entry: Step 8 - headless data-quality check -->
+## Step 8: The robot, a headless data-quality check
+
+**Goal (from the spec):** a `claude -p` script that runs unattended, checks
+`usage_daily` for data-quality problems, returns **structured output**, and
+**exits non-zero** when something is wrong. It needs every guardrail: a
+restricted toolset, an explicit permission mode, a turn cap, a timeout and a
+cheap model.
+
+**Concept: headless.** `claude -p "…"` runs Claude with no chat window. It
+gets a prompt, does the work, prints a result and exits. That's what lets a
+scheduler run it at 6 am with nobody there. "Nobody there" also means nobody
+can approve a prompt, stop a runaway loop or notice a hang. **The guardrails
+replace the human.**
+
+### 8a. Design: [`scripts/dq_check.py`](../scripts/dq_check.py)
+
+A Python wrapper around **one** `claude -p` call:
+
+| Guardrail | Setting | What it prevents |
+|---|---|---|
+| Cheap model | `claude-haiku-5-5` | A daily job costing real money (actual: ~$0.01 per run) |
+| Restricted tools | `--tools ""` + only `execute_sql` allowed | The job can't read files, run shell commands or browse |
+| Permission mode | `--permission-mode dontAsk` | Waiting forever for an approval nobody will give: anything not allowed is denied |
+| Turn cap | `--max-turns 8` | An endless query-think-query loop |
+| Budget cap | `--max-budget-usd 0.25` | A runaway bill |
+| Timeout | 180 s, enforced by the wrapper | A hung session blocking the scheduler |
+| Structured output | `--json-schema` (status, rows_checked, issues[]) | Prose that a script can't parse |
+| SQL guard | the step 7 hook still applies | The check "helpfully" fixing the bad rows |
+
+**Single source of truth:** the script reads the validity rules from
+**§7 of `docs/semantic-layer.md`** at runtime and puts them into the prompt.
+Change a rule in the doc, and the next scheduled run applies it.
+
+**The exit code comes from the wrapper, not from the model:**
+| Exit | Meaning |
+|---|---|
+| `0` | PASS: every row valid |
+| `1` | FAIL: data-quality issues found |
+| `2` | ERROR: the check itself can't be trusted (timeout, no/invalid JSON, a report that says FAIL with zero issues, `claude` not found) |
+
+**Why a separate code for "the check broke"?** The most dangerous unattended
+failure is a check that *silently* stops working and looks green. Separating
+"data is bad" (1) from "I couldn't check" (2) means neither can pass for the
+other, and neither is ever `0`.
+
+**Every run leaves a trace:** one JSON line per run in `logs/dq_check.log`,
+including errors. A failed 6 am run still has evidence of what went wrong.
+
+### 8b. Results
+
+**Normal run:** found **all 4 seeded problems**, nothing else, exit **1**:
+| usage_id | Account | Rule broken |
+|---|---|---|
+| 13 | ACC-1002 | Seat count non-negative (-5) |
+| 14 | ACC-1003 | Date present (NULL) |
+| 15 | ACC-1004 | Seat count present (NULL) |
+| 16 | ACC-9999 | Known account (not in `accounts`) |
+
+11 seconds, 5 turns, $0.011.
+
+**Failure-path test:** forced a 2-second timeout (`DQ_TIMEOUT_S=2`): `ERROR`,
+exit **2**, logged. A broken check fails loudly.
+
+**Bonus evidence:** the check's own SQL went through the step 7 hook (three
+ALLOW lines in `logs/hook.log`). The guard protects unattended runs too.
+
+### How to explain step 8 in 30 seconds
+> "The data-quality check is a headless Claude session on the cheapest model,
+> allowed exactly one tool, read-only SQL. It has a turn cap, a budget cap and
+> a timeout, and it must answer in a fixed JSON shape. The rules come straight
+> from the semantic layer, so docs and checks can't drift apart. The wrapper,
+> not the model, decides the exit code: 0 clean, 1 bad data, 2 the check
+> itself failed. It found exactly the four planted problems for about a cent."
+
+### Questions you might be asked
+- **"Why use an LLM for this at all? SQL could do it."** For five fixed
+  rules, plain SQL would work. The value of the agent is that the rules are
+  *read from the documentation*: add a rule in plain English to §7 and the
+  check enforces it with no code change. The wrapper's strict validation keeps
+  that flexibility from becoming unreliability.
+- **"What if the model says PASS but there are problems?"** The schema forces
+  it to list issues, and the wrapper rejects inconsistent reports. A model
+  that missed a row entirely would still be a risk. A deterministic SQL
+  cross-check is listed as a next step.
+- **"Why exit 2 and not 1 on a timeout?"** So a monitoring system can tell
+  "the data is bad" from "the robot is broken". They need different people.
+
+---
+
+<!-- Next entry: Step 9 - schedule, unattended run, unschedule -->

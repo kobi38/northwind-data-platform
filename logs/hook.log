@@ -1,3 +1,6 @@
 2026-11-18T15:52:28+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | SELECT * FROM usage_daily WHERE active_seats < 0;
 2026-11-18T15:53:01+02:00 | BLOCK | mcp__supabase__execute_sql | statement starts with 'delete', not a read (select/with/explain/show/values/table) | DELETE FROM usage_daily WHERE active_seats < 0;
 2026-11-18T15:53:22+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select usage_id, account_code, usage_date, active_seats from usage_daily where active_seats < 0
+2026-11-18T15:56:51+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select column_name, data_type from information_schema.columns where table_schema='public' and table_name='usage_daily' order by ordinal_position;
+2026-11-18T15:56:51+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select count(*) as total_rows from public.usage_daily;
+2026-11-18T15:56:53+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select u.usage_id, u.account_code, u.usage_date, u.active_seats, (select count(*) from public.usage_daily d2 where d2.account_code = u.account_code and d2.usage_date = u.usage_date) as same_acct_day_c
