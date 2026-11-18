@@ -19,7 +19,7 @@ It's updated at the end of every step.
 | 3 | 6. Plan-mode plan saved | evidence | ✅ Done |
 | 3 | 7. Destructive-SQL hook + proof | 5 | ✅ Done: blocked a real DELETE in a fresh session |
 | 4 | 8. Headless data-quality check | 6 | ✅ Done: finds all 4 seeded issues, exit 1 |
-| 4 | 9. Schedule → log entry → unschedule | 6 | ⬜ |
+| 4 | 9. Schedule → log entry → unschedule | 6 | ✅ Done: ran unattended 16:14, task deleted |
 | 5 | 10. Streamlit dashboard + screenshot | 7 | ⬜ |
 | 5 | 11. README + publish to GitHub | - | ⬜ |
 
@@ -738,4 +738,79 @@ ALLOW lines in `logs/hook.log`). The guard protects unattended runs too.
 
 ---
 
-<!-- Next entry: Step 9 - schedule, unattended run, unschedule -->
+## Step 9: On a schedule, proven unattended, then removed
+
+**Goal (from the spec):** put the check on a schedule, let it run **on its
+own at the scheduled time**, keep the timestamped log entry as proof, then
+**unregister the job** and say so. Leaving it running isn't extra credit:
+it keeps firing and costing money.
+
+**Concept: Task Scheduler.** Windows' built-in equivalent of `cron`. A task
+says *what* to run, *when*, and *as whom*.
+
+### 9a. The launcher: [`scripts/run_dq_scheduled.cmd`](../scripts/run_dq_scheduled.cmd)
+
+A scheduled task doesn't get your interactive shell's setup, so a script that
+works in your terminal can fail at 6 am. The launcher sets everything
+explicitly:
+| Line | Why |
+|---|---|
+| `set DQ_INVOKED_BY=task-scheduler` | Each log entry says who started it. That's how we *prove* it was the scheduler, not us. |
+| `cd /d "%~dp0.."` | The task's default working directory is `System32`, not the repo |
+| full path to `python.exe` | The task's PATH may not include Python |
+| `>> logs\dq_scheduler_stdout.log 2>&1` | If Python itself fails to start, there's still a trace |
+| `exit /b %RC%` | Passes the check's exit code back to Task Scheduler |
+
+### 9b. What happened
+
+| When | Event |
+|---|---|
+| ~15:59 | Task `NorthwindDQ` registered: daily, first run 16:14, "interactive only" (runs as the user, while logged in) |
+| **16:14:00** | **Task Scheduler started it with nobody at the keyboard** |
+| 16:14:13 | Done: FAIL, 4 issues, exit 1, $0.003, 13.4 s |
+| after | `schtasks` reported `Last Result: 1`, so the exit code reached the scheduler itself |
+| after | **Task deleted** (`schtasks /Delete /TN NorthwindDQ /F`). A query confirms it no longer exists. Its next run would have been 19/11 16:14. |
+
+**The proof** is in `logs/dq_check.log`:
+```
+{"timestamp": "2026-11-18T16:14:00+02:00", "check": "usage_daily", "model": "claude-haiku-5-5",
+ "invoked_by": "task-scheduler", ..., "issue_count": 4, ..., "result": "FAIL", "exit_code": 1, "duration_s": 13.4}
+```
+The raw output of the same run is in `logs/dq_scheduler_stdout.log`.
+
+**Why did the unattended run just work?** The failures that usually bite at
+6 am were found and fixed *earlier*, while testing headless mode:
+- **Folder trust** (step 3 prep): headless mode ignored allow rules in an
+  untrusted folder.
+- **Working directory and PATH:** handled explicitly by the launcher.
+
+The unattended run *confirmed* those fixes. It's still the only run that
+proves them.
+
+**Limitation (honest):** "interactive only" means it runs only while the user
+is logged in. A real production job would run as a service account, "whether
+user is logged on or not", on a machine that doesn't sleep.
+
+### How to explain step 9 in 30 seconds
+> "I scheduled the check in Windows Task Scheduler through a launcher that
+> sets its own working directory, Python path and a 'task-scheduler' label,
+> because scheduled jobs don't inherit your shell. At 16:14 it ran by itself
+> and found the four problems, and Task Scheduler recorded exit code 1, so a
+> monitor would see the failure. Then I deleted the task: an unattended job
+> that nobody needs anymore is just a recurring cost and a security surface."
+
+### Questions you might be asked
+- **"How do you know you didn't run it yourself?"** The entry says
+  `invoked_by: task-scheduler`, which only the launcher sets. Its timestamp
+  is exactly the scheduled minute (16:14:00), and Task Scheduler's own
+  `Last Run Time` matches.
+- **"Why remove it?"** Every run costs API calls and holds database access.
+  Knowing to turn off what you started is part of shipping unattended
+  software.
+- **"What would production need?"** An always-on host or a cloud scheduler,
+  a service account, alerting on exit codes 1 and 2 (e.g. email or Slack),
+  and log rotation.
+
+---
+
+<!-- Next entry: Step 10 - Streamlit dashboard -->

@@ -4,3 +4,5 @@
 2026-11-18T15:56:51+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select column_name, data_type from information_schema.columns where table_schema='public' and table_name='usage_daily' order by ordinal_position;
 2026-11-18T15:56:51+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select count(*) as total_rows from public.usage_daily;
 2026-11-18T15:56:53+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select u.usage_id, u.account_code, u.usage_date, u.active_seats, (select count(*) from public.usage_daily d2 where d2.account_code = u.account_code and d2.usage_date = u.usage_date) as same_acct_day_c
+2026-11-18T16:14:09+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | select count(*) as total_rows from usage_daily;
+2026-11-18T16:14:10+02:00 | ALLOW | mcp__supabase__execute_sql | read-only query | with dup as ( select account_code, usage_date from usage_daily group by account_code, usage_date having count(*) > 1 ) select u.usage_id, u.account_code, u.usage_date, u.active_seats, (u.usage_date is

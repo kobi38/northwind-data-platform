@@ -1,0 +1,41 @@
+===== Wed 11/18/2026 16:14:00.50 ===== 
+{
+  "timestamp": "2026-11-18T16:14:00+02:00",
+  "check": "usage_daily",
+  "model": "claude-haiku-5-5",
+  "invoked_by": "task-scheduler",
+  "cost_usd": 0.0031765200000000004,
+  "num_turns": 4,
+  "rows_checked": 16,
+  "issue_count": 4,
+  "issues": [
+    {
+      "rule": "Seat count non-negative (active_seats >= 0)",
+      "usage_id": 13,
+      "account_code": "ACC-1002",
+      "detail": "active_seats = -5 on usage_date 2026-03-04"
+    },
+    {
+      "rule": "Date present (usage_date is not null)",
+      "usage_id": 14,
+      "account_code": "ACC-1003",
+      "detail": "usage_date is NULL (active_seats = 17)"
+    },
+    {
+      "rule": "Seat count present (active_seats is not null)",
+      "usage_id": 15,
+      "account_code": "ACC-1004",
+      "detail": "active_seats is NULL on usage_date 2026-03-05"
+    },
+    {
+      "rule": "Known account (account_code exists in accounts)",
+      "usage_id": 16,
+      "account_code": "ACC-9999",
+      "detail": "account_code ACC-9999 does not exist in accounts (usage_date 2026-03-05, active_seats = 40)"
+    }
+  ],
+  "result": "FAIL",
+  "exit_code": 1,
+  "duration_s": 13.4
+}
+exit code 1 
