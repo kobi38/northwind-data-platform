@@ -1,0 +1,159 @@
+# golden.yaml - the ANSWER KEY for the Northwind Cloud semantic layer eval.
+#
+# Each entry pairs a natural-language QUESTION with the GOLD answer a correct,
+# semantic-layer-aware run should produce. The gold values were computed from
+# the seed data in schema.sql and verified by execution - do NOT edit them.
+#
+# WHO READS THIS FILE: you, and run_eval.py. NOT the system under test. The
+# questions also live on their own in questions.yaml, and that is the only file
+# the model is ever pointed at. Handing the model a file with the answers in it
+# would mean relying on it to not look - and the failure would be silent, since
+# a run that copied the gold scores 100% while measuring nothing.
+#
+# Two kinds of check:
+#   - accuracy questions (q1-q5): each has a gold value, graded with a tolerance.
+#   - consistency questions (c1-c3): no fixed value; all three must AGREE.
+#
+# The two gold fields are not competing answers. `gold` / `gold_numbers` is the
+# written number the grader actually compares against. `gold_sql` is
+# documentation - it shows where the number came from, and it is the query a
+# production eval would run live against the warehouse on every run.
+#
+# ---------------------------------------------------------------------------
+# LEGEND - the business rule each question depends on
+#
+#   annual-normalization : an annual subscription's `amount` is a full year.
+#                          MRR needs it divided by 12.
+#   trial-exclusion      : trial subscriptions carry a real-looking amount but
+#                          bill nothing, so they are not recurring revenue.
+#   internal-exclusion   : accounts flagged is_internal never appear in a
+#                          customer-facing number.
+#   term-overlap         : an upgrade closes one subscription row and opens
+#                          another. Counting both double-counts the account.
+#   cash-vs-mrr          : invoices.total_amount is collected cash including
+#                          tax. It is a different metric from MRR.
+#   status-filter        : active and past_due are live. cancelled and churned
+#                          are not. past_due still counts - the contract exists.
+#   accounts-vs-subs     : "customers" means distinct accounts, not
+#                          subscription rows. One account can hold several.
+#
+# None of these are readable from the schema. That is what your semantic layer
+# is for.
+# ---------------------------------------------------------------------------
+
+accuracy:
+  - id: q1
+    question: "Using Supabase, what was our MRR in March 2026?"
+    tests: [annual-normalization, trial-exclusion, internal-exclusion, term-overlap, status-filter]
+    gold: "1394.00"
+    gold_numbers: [1394.00]
+    tolerance: 0.01
+    gold_sql: |
+      select round(sum(case when s.billing_interval = 'annual'
+                            then s.amount / 12.0 else s.amount end), 2) as mrr
+      from subscriptions s
+      join accounts a on a.account_code = s.account_code
+      where a.is_internal = false
+        and s.status in ('active', 'past_due')
+        and s.started_on <= date '2026-03-31'
+        and (s.ended_on is null or s.ended_on >= date '2026-03-01');
+    note: |
+      Contributing rows: SUB-7001 9600/12=800.00, SUB-7002 180.00,
+      SUB-7003 170.00, SUB-7005 199.00, SUB-7010 45.00 -> 1394.00.
+      Excluded: SUB-7004 (closed Feb 14, superseded by SUB-7005),
+      SUB-7006 (churned), SUB-7007 + SUB-7008 (trials), SUB-7009 (internal).
+      A run with no semantic layer typically returns 34681.00 - the sum of
+      every amount column in the table.
+
+  - id: q2
+    question: "Using Supabase, what was Vertex Logistics' MRR in March 2026?"
+    tests: [annual-normalization, status-filter]
+    gold: "800.00"
+    gold_numbers: [800.00]
+    tolerance: 0.01
+    gold_sql: |
+      select round(sum(case when s.billing_interval = 'annual'
+                            then s.amount / 12.0 else s.amount end), 2) as mrr
+      from subscriptions s
+      join accounts a on a.account_code = s.account_code
+      where a.is_internal = false
+        and a.company_name = 'Vertex Logistics'
+        and s.status in ('active', 'past_due')
+        and s.started_on <= date '2026-03-31'
+        and (s.ended_on is null or s.ended_on >= date '2026-03-01');
+    note: |
+      The annual-normalization rule on its own. Answering 9600.00 means the
+      contract was counted as a month instead of a year.
+
+  - id: q3
+    question: "Using Supabase, how many paying customers did we have in March 2026?"
+    tests: [accounts-vs-subs, trial-exclusion, internal-exclusion, term-overlap, status-filter]
+    gold: "4"
+    gold_numbers: [4]
+    tolerance: 0
+    gold_sql: |
+      select count(distinct a.account_code)
+      from subscriptions s
+      join accounts a on a.account_code = s.account_code
+      where a.is_internal = false
+        and s.status in ('active', 'past_due')
+        and s.started_on <= date '2026-03-31'
+        and (s.ended_on is null or s.ended_on >= date '2026-03-01');
+    note: |
+      Four ACCOUNTS (Vertex, Brightpath, Nordwind, Cobalt) across five live
+      subscription rows - Brightpath holds two. Answering 5 counted
+      subscriptions instead of customers; 6 also counted the trials.
+
+  - id: q4
+    question: "Using Supabase, how much cash did we actually collect in Q1 2026?"
+    tests: [cash-vs-mrr, internal-exclusion]
+    gold: "13428.09"
+    gold_numbers: [13428.09]
+    tolerance: 0.01
+    gold_sql: |
+      select round(sum(i.total_amount), 2) as collected
+      from invoices i
+      join subscriptions s on s.subscription_code = i.subscription_code
+      join accounts a on a.account_code = s.account_code
+      where a.is_internal = false
+        and i.payment_status = 'paid'
+        and i.invoice_date between date '2026-01-01' and date '2026-03-31';
+    note: |
+      This question asks for CASH, not MRR - the one question where
+      invoices.total_amount is the right column, tax included, because that is
+      what was actually collected. It still needs paid-only (excluding the
+      refunded INV-3009, the open INV-3015 and the void INV-3016) and the
+      internal tenant's 28080.00 removed. A semantic layer that only says
+      "never use total_amount" cannot answer this.
+
+  - id: q5
+    question: "Using Supabase, how many accounts were on trial in March 2026?"
+    tests: [status-filter, internal-exclusion]
+    gold: "2"
+    gold_numbers: [2]
+    tolerance: 0
+    gold_sql: |
+      select count(distinct a.account_code)
+      from subscriptions s
+      join accounts a on a.account_code = s.account_code
+      where a.is_internal = false
+        and s.status = 'trial'
+        and s.started_on <= date '2026-03-31'
+        and (s.ended_on is null or s.ended_on >= date '2026-03-01');
+    note: |
+      Lumen Robotics and Sable Media. The mirror image of q1 - the same two
+      rows excluded from MRR are exactly the ones counted here.
+
+# Three phrasings of one question. There is no gold value - they only have to
+# AGREE with each other. A layer that defines MRR once and points every phrasing
+# at that definition returns the same number three times; one that leaves
+# "recurring revenue" undefined drifts between them.
+consistency:
+  tolerance: 0.01
+  questions:
+    - id: c1
+      question: "Using Supabase, what was our MRR in March 2026?"
+    - id: c2
+      question: "Using Supabase, what is our monthly recurring revenue for March 2026?"
+    - id: c3
+      question: "Using Supabase, how much recurring revenue were we running at in March 2026?"

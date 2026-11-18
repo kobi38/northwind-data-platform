@@ -1,0 +1,28 @@
+# results-template.yaml - the shape your saved run must take.
+#
+# Copy this to results.yaml and fill in the numbers your run actually produced.
+# Nothing else goes in the file: no commentary, no SQL, no units - just the
+# numbers, so the grader can compare them mechanically.
+#
+# RULES
+#   - One entry per question id, matching questions.yaml.
+#   - Record what the run ACTUALLY returned, including when it is wrong. A
+#     results file edited to look better grades a fiction.
+#   - Ask each question in a FRESH session. A run that can see the previous
+#     answers is not an independent measurement - and c1-c3 measure nothing at
+#     all if the second and third can read the first.
+#
+# Grade it:  python run_eval.py
+
+# --- Accuracy -----------------------------------------------------------------
+q1:      # MRR in March 2026
+q2:      # Vertex Logistics MRR, March 2026
+q3:      # paying customers in March 2026 (a count)
+q4:      # cash collected in Q1 2026
+q5:      # accounts on trial in March 2026 (a count)
+
+# --- Consistency --------------------------------------------------------------
+# Three phrasings of the same question. No right answer - they must AGREE.
+c1:
+c2:
+c3:

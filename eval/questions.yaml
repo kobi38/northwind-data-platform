@@ -1,0 +1,38 @@
+# questions.yaml - the exam paper. Questions ONLY, no answers.
+#
+# This is the half of the eval set that the SYSTEM UNDER TEST is allowed to see.
+# The gold answers live in golden.yaml, which the model never opens - the same
+# reason an exam paper and the answer key are not the same sheet of paper. If the
+# answers were in here, a run that quietly copied them would score 100% and
+# measure nothing.
+#
+# Two kinds of question:
+#   - accuracy (q1-q5): each has one right answer, kept in golden.yaml.
+#   - consistency (c1-c3): three phrasings of one question. There is no fixed
+#     answer; all three must simply AGREE with each other.
+#
+# Do NOT edit the questions - they are matched by id against golden.yaml.
+
+accuracy:
+  - id: q1
+    question: "Using Supabase, what was our MRR in March 2026?"
+
+  - id: q2
+    question: "Using Supabase, what was Vertex Logistics' MRR in March 2026?"
+
+  - id: q3
+    question: "Using Supabase, how many paying customers did we have in March 2026?"
+
+  - id: q4
+    question: "Using Supabase, how much cash did we actually collect in Q1 2026?"
+
+  - id: q5
+    question: "Using Supabase, how many accounts were on trial in March 2026?"
+
+consistency:
+  - id: c1
+    question: "Using Supabase, what was our MRR in March 2026?"
+  - id: c2
+    question: "Using Supabase, what is our monthly recurring revenue for March 2026?"
+  - id: c3
+    question: "Using Supabase, how much recurring revenue were we running at in March 2026?"
