@@ -12,7 +12,7 @@ It's updated at the end of every step.
 |---|---|---|---|
 | 0 | Survey the project | - | ✅ Done |
 | 1 | 1. Repo, `.gitignore`, MCP, permissions | 1 | ✅ Done (one action left for you, see below) |
-| 1 | 2. Semantic layer + `CLAUDE.md` | 2 | ⬜ |
+| 1 | 2. Semantic layer + `CLAUDE.md` | 2 | ✅ Done (written after the baseline, on purpose) |
 | 2 | 3. Baseline eval (no semantic layer) | 3 | ✅ Done: 5/5, consistency PASS |
 | 2 | 4. "Run the eval" skill | 4 | ⬜ |
 | 2 | 5. Grade + diagnose failures | 3 | ⬜ |
@@ -346,4 +346,115 @@ turn guesses into written decisions.**
 
 ---
 
-<!-- Next entry: Step 2 - semantic layer -->
+## Step 2: The semantic layer and `CLAUDE.md`
+
+*(Done after step 3 on purpose: the baseline had to be measured before any
+rules were written down.)*
+
+**Goal (from the spec):** a document from which *someone who has never seen
+the database can compute MRR correctly*, with `CLAUDE.md` pointing to it
+instead of repeating it.
+
+**Concept: semantic layer.** The schema says *what columns exist*
+(`amount`, `billing_interval`, `status`). It can't say *what the business
+decided*: that MRR divides annual contracts by 12, that `past_due` customers
+still count, that cash includes tax. Those are decisions. The semantic layer
+is where decisions are written down so every person and every AI session
+makes the same ones.
+
+### 2a. Profile the data first, write second
+
+Before writing a single definition, we ran one profiling query against the
+live database. The main session couldn't query directly, so a headless
+`claude -p` run on Haiku with only `execute_sql` allowed ran the exact SQL.
+It confirmed:
+
+| Finding | Becomes which rule |
+|---|---|
+| Brightpath (ACC-1002) has **two** live contracts at once | Count customers by **distinct account**, not by row |
+| `total_amount - tax_amount` = contract `amount` on every normal invoice | Proof that `total_amount` **includes tax** |
+| The only mismatch is a `void` invoice (500 vs a 9600 contract) | Void invoices are adjustments: never include |
+| Every `cancelled`/`churned` term has an `ended_on`. Every live status is open | Dates and statuses agree, so dates can be trusted for history |
+| Cobalt's old term ends 02-14, new term starts 02-15 | `ended_on` is the **inclusive** last day |
+| One `usage_daily` row points to an unknown account | `usage_daily` has no foreign key: validate it (step 8) |
+| All rows are USD | Rule kept anyway: never sum across currencies |
+
+### 2b. What's in `docs/semantic-layer.md`
+
+| Section | Content |
+|---|---|
+| 1. Business | One paragraph: what Northwind sells and how it bills |
+| 2. Tables | Grain of every table, join keys (`*_code`, never `*_id`), and the 4 leftover class tables marked "not Northwind" |
+| 3. Vocabulary | Every status value: what it means, whether it's paying, whether it counts toward MRR |
+| 4. Universal filters | Exclude internal, exclude trials, use the contract `amount` not list price, never mix currencies |
+| 5. Metrics | MRR, paying customers, trial accounts, cash collected, net revenue, each with a definition and **canonical SQL** |
+| 6. Gotchas | 13 traps, each one a way to get a wrong number |
+| 7. Data-quality rules | What makes a `usage_daily` row valid (used by the scheduled check) |
+| 8. Glossary | Plain definitions, including synonyms ("recurring revenue" = MRR) |
+| 9. Answer protocol | How to answer: map to a metric, apply filters, use the SQL, state the definition |
+
+### 2c. The key decisions (the three baseline guesses, now settled)
+
+| Baseline guess | Now a written rule | Reasoning |
+|---|---|---|
+| `past_due` counts? | **Yes.** It's a live contract | A failing payment is a collections problem, not churn |
+| Cash includes tax? | **Yes** | Cash = what landed in the bank, and `total_amount` is what the customer paid |
+| "Paying" = live contract, or paid a March invoice? | **A live non-trial contract** at month end | An annual customer pays once a year but is a customer all year |
+
+**One more decision the baseline never faced: what "in March" means.** We
+defined it as a **month-end snapshot** (live on the last day of the month),
+using **dates, not status**. Why it matters:
+- *Status has no history.* Harbor Freight is `churned` **today** but was paying
+  all of February. A status filter would drop it from February's MRR.
+- *Upgrades overlap.* Cobalt's old and new terms both touch February. Summing
+  every overlapping term would count Cobalt twice. A snapshot counts once.
+
+The document includes a **worked example for February** (MRR 1539.00),
+deliberately *not* March. It teaches the method and shows the trap without
+handing the eval its answer.
+
+### 2d. `CLAUDE.md`: a router, not a copy
+
+`CLAUDE.md` is loaded into every Claude session automatically. It stays short
+and says: *for any business question, read `docs/semantic-layer.md` first*.
+It also lists the hard rules (read-only access, don't open the answer key,
+don't hand-edit results, don't "fix" dirty usage rows).
+**Why not put the definitions in `CLAUDE.md`?** Two copies drift apart. One
+source of truth, many pointers to it.
+
+### 2e. Verification
+
+The canonical SQL from the document was run against the live database on
+non-eval periods and checked by hand against the raw rows:
+
+| Query | Result | Hand check |
+|---|---|---|
+| MRR, Feb 2026 | 1539.00 | 800 + 180 + 170 + 199 + 190 ✓ |
+| Paying customers, Feb 2026 | 5 | Vertex, Brightpath, Nordwind, Cobalt, Harbor ✓ |
+| Trial accounts, Feb 2026 | 2 | Lumen, Sable ✓ |
+| Cash collected, Jan 2026 | 11921.13 | 5 paid January invoices, demo tenant excluded ✓ |
+
+The real test, whether answers *change* with the document present, is the
+"after" eval run in step 5.
+
+### How to explain step 2 in 30 seconds
+> "The schema tells you columns. It doesn't tell you decisions. I profiled the
+> live data first, then wrote down every decision: what MRR includes, why
+> past-due customers still count, why cash includes tax, why customers are
+> counted by account. Every metric has canonical SQL, checked against the
+> database. I used a month-end snapshot with dates instead of status, because
+> status has no history, and I put a February worked example in the doc so it
+> teaches the method without leaking the eval's March answers."
+
+### Questions you might be asked
+- **"Why canonical SQL? Isn't that spoon-feeding the AI?"** That's the
+  point. A metric with one agreed query gives one answer. The eval's
+  consistency test (three phrasings, one number) checks exactly that.
+- **"Why a February example and not March?"** March is what the eval asks.
+  An example with March numbers would turn the eval into copying.
+- **"What happens when the business changes a rule?"** Change it in one
+  place, `semantic-layer.md`, then re-run the eval to see what moved.
+
+---
+
+<!-- Next entry: Step 4 - eval skill / Step 5 - after-run and diagnosis -->
