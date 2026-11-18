@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": ["supabase"],
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__search_docs",
+
+      "Bash(python run_eval.py*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "PowerShell(python run_eval.py*)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "PowerShell(git push*)"
+    ],
+    "deny": [
+      "mcp__claude_ai_Supabase",
+
+      "mcp__supabase__apply_migration",
+
+      "Read(./eval/golden.yaml)",
+      "Read(./schema.sql)",
+      "Bash(*golden.yaml*)",
+      "Bash(*schema.sql*)",
+      "PowerShell(*golden.yaml*)",
+      "PowerShell(*schema.sql*)",
+
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.streamlit/secrets.toml)",
+
+      "Bash(git push --force*)",
+      "PowerShell(git push --force*)",
+      "Bash(rm -rf *)",
+      "PowerShell(Remove-Item * -Recurse*)"
+    ]
+  }
+}
